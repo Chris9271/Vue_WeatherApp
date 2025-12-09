@@ -53,7 +53,7 @@ const handleSelectedOption = (index) => {
     countryCode: cityArr[index]?.country || "",
   };
 
-  console.log(inputFieldCity.value);
+  // console.log(inputFieldCity.value);
 
   getCityWithStateCountry();
 };
@@ -66,7 +66,7 @@ const getCityPicture = async () => {
         inputFieldCity.value.cityName || defaultCity.value
       }&client_id=${import.meta.env.VITE_PICTURE_API_KEY}`
     );
-    console.log(result.data.urls.full);
+    // console.log(result.data.urls.full);
     cityPictureUrl.value = result.data.urls.full;
   } catch (err) {
     console.error(err);
@@ -77,7 +77,7 @@ const getCityPicture = async () => {
 const getCityLatLon = async () => {
   try {
     const result =
-      await axios.get(`http://api.openweathermap.org/geo/1.0/direct?q=${
+      await axios.get(`https://api.openweathermap.org/geo/1.0/direct?q=${
         inputFieldCity.value.cityName || defaultCity.value
       }&limit=10&appid=${import.meta.env.VITE_WEATHER_API_KEY}
     `);
@@ -128,7 +128,7 @@ const getCityWithStateCountry = async () => {
   let cityStateCountryString = `${inputFieldCity?.value?.cityName},${inputFieldCity?.value?.stateCode},${inputFieldCity?.value?.countryCode}`;
   try {
     const result =
-      await axios.get(`http://api.openweathermap.org/geo/1.0/direct?q=${cityStateCountryString}&limit=5&appid=${
+      await axios.get(`https://api.openweathermap.org/geo/1.0/direct?q=${cityStateCountryString}&limit=5&appid=${
         import.meta.env.VITE_WEATHER_API_KEY
       }
     `);
@@ -174,8 +174,8 @@ function caculateYAxis(rawMin, rawMax) {
   let min = rawMin - buffer;
   let max = rawMax + buffer;
 
-  console.log("min", min);
-  console.log("max", max);
+  // console.log("min", min);
+  // console.log("max", max);
 
   // 避免 min == max（差 1 度會常發生）
   if (min === max) max = min + 1;
@@ -186,8 +186,8 @@ function caculateYAxis(rawMin, rawMax) {
   // Step 3：重新計算 max（關鍵：確保一定 >= 原始 rawMax）
   const finalMax = min + interval * (desiredSplits - 1);
 
-  console.log("finalMax", finalMax);
-  console.log("interval", interval);
+  // console.log("finalMax", finalMax);
+  // console.log("interval", interval);
   return {
     min,
     max: finalMax,
@@ -235,7 +235,7 @@ const getCityWeather = async () => {
 
 // 取得當日每小時天氣資料
 const getHourlyWeather = async () => {
-  console.log(cityDetail.value);
+  // console.log(cityDetail.value);
   try {
     const result =
       await axios.get(`https://pro.openweathermap.org/data/2.5/forecast/hourly?lat=${
@@ -272,7 +272,7 @@ const getHourlyWeather = async () => {
     );
 
     const chartTempData = caculateYAxis(chartMin, chartMax);
-    console.log(chartTempData);
+    // console.log(chartTempData);
 
     tempChartData = {
       color: ["#ffffff"],
@@ -333,7 +333,7 @@ const getHourlyWeather = async () => {
 
     myChart.setOption(tempChartData);
 
-    console.log(tempChartData);
+    // console.log(tempChartData);
   } catch (err) {
     console.error(err);
   }
