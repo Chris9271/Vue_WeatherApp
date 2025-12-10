@@ -4,6 +4,9 @@ import axios from "axios";
 // Import the echarts core module, which provides the necessary interfaces for using echarts.
 import * as echarts from "echarts/core";
 import DailyWeather from "./DailyWeather.vue";
+import { useAppStore } from "@/stores/appStore";
+
+const appStore = useAppStore();
 
 // 預設城市(之後改抓使用者所在地?)
 const defaultCity = ref("New Taipei");
@@ -34,7 +37,8 @@ const inputDropdownList = ref([]);
 const futureCityWeatherList = ref([]);
 
 // 城市背景圖片網址
-const cityPictureUrl = ref(null);
+const cityPictureUrl =
+  "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
 // 存放多城市資料陣列(原始資料)
 let cityArr = [];
@@ -56,21 +60,6 @@ const handleSelectedOption = (index) => {
   // console.log(inputFieldCity.value);
 
   getCityWithStateCountry();
-};
-
-// 取得使用者輸入城市圖片
-const getCityPicture = async () => {
-  try {
-    const result = await axios.get(
-      `https://api.unsplash.com/photos/random?query=${
-        inputFieldCity.value.cityName || defaultCity.value
-      }&client_id=${import.meta.env.VITE_PICTURE_API_KEY}`
-    );
-    // console.log(result.data.urls.full);
-    cityPictureUrl.value = result.data.urls.full;
-  } catch (err) {
-    console.error(err);
-  }
 };
 
 // 取得城市經緯度(非多個相同城市)
@@ -106,9 +95,6 @@ const getCityLatLon = async () => {
         stateCode: state || "",
       };
 
-      //
-      getCityPicture();
-
       // 取得城市天氣資料
       getCityWeather();
 
@@ -143,9 +129,6 @@ const getCityWithStateCountry = async () => {
       cityName: name,
       stateCode: state || "",
     };
-
-    //
-    getCityPicture();
 
     // 取得城市天氣資料
     getCityWeather();
@@ -198,6 +181,7 @@ function caculateYAxis(rawMin, rawMax) {
 // 取得城市天氣資料
 const getCityWeather = async () => {
   try {
+    appStore.openLoader();
     const result =
       await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${
         cityDetail.value.lat
@@ -205,6 +189,8 @@ const getCityWeather = async () => {
         import.meta.env.VITE_WEATHER_API_KEY
       }
     `);
+
+    appStore.closeLoader();
 
     currentTimeDt = result.data.dt;
 
@@ -304,6 +290,7 @@ const getHourlyWeather = async () => {
       yAxis: {
         axisLabel: {
           color: "White",
+          padding: [0, 5, 0, 0],
         },
         type: "value",
         splitLine: {
@@ -367,7 +354,7 @@ const switchTempUnit = () => {
   getHourlyWeather();
 };
 
-// 溫度轉換
+// 高低溫顯示轉換(攝氏華氏)
 const convertTemp = (maxTemp, minTemp) => {
   if (cityDetail.value.unit == "°C") {
     return (
@@ -381,16 +368,24 @@ const convertTemp = (maxTemp, minTemp) => {
   }
 };
 
-// 攝氏華氏轉換計算
-const temperature = computed(() => {
+// 單一溫度轉換計算(攝氏華氏)
+const temperature = (temp) => {
+  if (!temp) return "";
   if (cityDetail.value.unit == "°C") {
-    return (cityDetail.value.temperature - 273.15).toFixed(0) + " °C";
+    return (temp - 273.15).toFixed(0) + " °C";
   } else {
-    return cityDetail.value.temperature + " °F";
+    return temp + " °F";
   }
-});
+};
 
 var myChart;
+
+// 視窗大小改變時，調整圖表大小
+window.addEventListener("resize", () => {
+  if (myChart) {
+    myChart.resize();
+  }
+});
 
 onMounted(() => {
   getCityLatLon();
@@ -400,14 +395,15 @@ onMounted(() => {
 <template>
   <v-app>
     <v-main>
+      <!-- 背景圖片 -->
       <div class="position-absolute w-100 h-100 cityBackground">
         <img :src="cityPictureUrl" class="position-absolute w-100 h-100" />
       </div>
       <v-container class="d-flex flex-row ga-3">
-        <!-- 輸入、切換單位、語言切換? -->
+        <!-- 輸入、切換單位 -->
         <v-sheet class="d-flex flex-column align-center ga-3 w-66 leftSheet">
           <div class="d-flex flex-row align-center ga-3 w-75">
-            <!-- 使用者輸入區塊 -->
+            <!-- 使用者輸入＆選擇區塊 -->
             <v-combobox
               v-model="inputFieldCity.cityName"
               placeholder="Enter a City"
@@ -415,6 +411,7 @@ onMounted(() => {
               @keyup.enter="getCityLatLon"
               :items="inputDropdownList"
               :hide-no-data="inputDropdownList.length == 0"
+              autoComplete="off"
             >
               <template #item="{ props, index, item }">
                 <v-list-item
@@ -433,23 +430,23 @@ onMounted(() => {
               </template>
             </v-combobox>
 
-            <v-btn color="primary" @click="getCityLatLon">Search</v-btn>
+            <v-btn variant="tonal" @click="getCityLatLon">Search</v-btn>
           </div>
 
-          <!-- 顯示城市、國家、日期＆星期、天氣、溫度 -->
+          <!-- 顯示城市、天氣、溫度 -->
           <div
             class="d-flex flex-column justify-space-between align-center w-100 h-100"
           >
             <div class="d-flex flex-column">
-              <h2 class="cityName">
-                {{ cityDetail.cityName + ", " + cityDetail.countryCode }}
+              <h2 class="cityName" v-show="cityDetail.cityName">
+                {{ cityDetail?.cityName + ", " + cityDetail?.countryCode }}
               </h2>
               <div class="d-flex flex-column align-center">
                 <img
                   :src="`https://openweathermap.org/img/wn/${cityDetail.weatherIcon}@2x.png`"
                 />
                 <h3 class="tempDegree">
-                  {{ temperature }}
+                  {{ temperature(cityDetail?.temperature) }}
                 </h3>
               </div>
             </div>
@@ -469,8 +466,6 @@ onMounted(() => {
             inset
           ></v-switch>
 
-          <!-- 語言選擇 -->
-
           <!-- 天氣細節 -->
           <div
             class="d-flex flex-column justify-space-between ga-3 pa-3 h-100 weatherDetails"
@@ -482,63 +477,60 @@ onMounted(() => {
                 <span>High</span>
                 <span>：</span>
                 <span>{{
-                  cityDetail?.unit === "°C"
-                    ? (futureCityWeatherList[0]?.temp.max - 273.15).toFixed(0) +
-                      " °C"
-                    : futureCityWeatherList[0]?.temp.max.toFixed(0) + " °F"
+                  temperature(futureCityWeatherList[0]?.temp?.max)
                 }}</span>
               </p>
               <p class="d-flex flex-row align-center">
                 <span>Low</span>
                 <span>：</span>
                 <span>{{
-                  cityDetail?.unit === "°C"
-                    ? (futureCityWeatherList[0]?.temp.min - 273.15).toFixed(0) +
-                      " °C"
-                    : futureCityWeatherList[0]?.temp.min.toFixed(0) + " °F"
+                  temperature(futureCityWeatherList[0]?.temp?.min)
                 }}</span>
               </p>
               <p class="d-flex flex-row align-center">
                 <span>Sunrise</span>
                 <span>：</span>
                 <span>{{
-                  new Date(
-                    futureCityWeatherList[0]?.sunrise * 1000
-                  ).toLocaleTimeString("en-us", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })
+                  futureCityWeatherList[0]?.sunrise
+                    ? new Date(
+                        futureCityWeatherList[0]?.sunrise * 1000
+                      ).toLocaleTimeString("en-us", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })
+                    : ""
                 }}</span>
               </p>
               <p class="d-flex flex-row align-center">
                 <span>Sunset</span>
                 <span>：</span>
                 <span>{{
-                  new Date(
-                    futureCityWeatherList[0]?.sunset * 1000
-                  ).toLocaleTimeString("en-us", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })
+                  futureCityWeatherList[0]?.sunset
+                    ? new Date(
+                        futureCityWeatherList[0]?.sunset * 1000
+                      ).toLocaleTimeString("en-us", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })
+                    : ""
                 }}</span>
               </p>
               <p class="d-flex flex-row align-center">
                 <span>Humidity</span>
                 <span>：</span>
-                <span>{{ futureCityWeatherList[0]?.humidity + "%" }}</span>
+                <span>{{
+                  futureCityWeatherList[0]?.humidity
+                    ? futureCityWeatherList[0]?.humidity + " %"
+                    : ""
+                }}</span>
               </p>
               <p class="d-flex flex-row align-center">
                 <span>Feels like</span>
                 <span>：</span>
                 <span>{{
-                  cityDetail?.unit === "°C"
-                    ? (
-                        futureCityWeatherList[0]?.feels_like.day - 273.15
-                      ).toFixed(0) + " °C"
-                    : futureCityWeatherList[0]?.feels_like.day.toFixed(0) +
-                      " °F"
+                  temperature(futureCityWeatherList[0]?.feels_like?.day)
                 }}</span>
               </p>
             </div>
@@ -586,6 +578,8 @@ div.cityBackground::before {
 
 .rightSheet {
   z-index: 2;
+  border-radius: 4px;
+  overflow: hidden;
 
   .switchBtn {
     background-color: #333333;
