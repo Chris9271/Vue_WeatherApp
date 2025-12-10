@@ -9,7 +9,7 @@ import { useAppStore } from "@/stores/appStore";
 const appStore = useAppStore();
 
 // 預設城市(之後改抓使用者所在地?)
-const defaultCity = ref("New Taipei");
+const defaultCity = ref("Taipei");
 
 // 使用者輸入城市
 const inputFieldCity = ref({
@@ -65,45 +65,58 @@ const handleSelectedOption = (index) => {
 // 取得城市經緯度(非多個相同城市)
 const getCityLatLon = async () => {
   try {
-    const result =
-      await axios.get(`https://api.openweathermap.org/geo/1.0/direct?q=${
-        inputFieldCity.value.cityName || defaultCity.value
-      }&limit=10&appid=${import.meta.env.VITE_WEATHER_API_KEY}
-    `);
+    // const result =
+    //   await axios.get(`https://api.openweathermap.org/geo/1.0/direct?q=${
+    //     inputFieldCity.value.cityName || defaultCity.value
+    //   }&limit=10&appid=${import.meta.env.VITE_WEATHER_API_KEY}
+    // `);
+    // const result = await axios.get("/api/weather", {
+    //   params: {
+    //     q: inputFieldCity.value.cityName || defaultCity.value,
+    //   },
+    // });
+
+    const result = await axios.get("/api/weather", {
+      params: {
+        q: inputFieldCity.value.cityName || defaultCity.value,
+      },
+    });
+
+    console.log(result.data);
 
     // 過濾出符合使用者輸入或預設城市名稱的資料
-    cityArr = result.data.filter(
-      (city) =>
-        city.name.includes(inputFieldCity.value.cityName) ||
-        city.name === defaultCity.value
-    );
+    // cityArr = result.data.filter(
+    //   (city) =>
+    //     city.name.includes(inputFieldCity.value.cityName) ||
+    //     city.name === defaultCity.value
+    // );
 
-    // 有些城市名稱會有重複，API會回傳多筆資料，要顯示下拉選單讓使用者選擇
-    if (cityArr.length > 1) {
-      inputDropdownList.value = cityArr.map(
-        (city) => `${city.name} ${city?.state || ""} ${city?.country || ""}`
-      );
-    } else {
-      // 取得並設定程式經緯度、國碼、城市名稱
-      const { lat, lon, country, state, name } = result.data[0];
-      cityDetail.value = {
-        ...cityDetail.value,
-        lat,
-        lon,
-        countryCode: country,
-        cityName: name,
-        stateCode: state || "",
-      };
+    // // 有些城市名稱會有重複，API會回傳多筆資料，要顯示下拉選單讓使用者選擇
+    // if (cityArr.length > 1) {
+    //   inputDropdownList.value = cityArr.map(
+    //     (city) => `${city.name} ${city?.state || ""} ${city?.country || ""}`
+    //   );
+    // } else {
+    //   // 取得並設定程式經緯度、國碼、城市名稱
+    //   const { lat, lon, country, state, name } = result.data[0];
+    //   cityDetail.value = {
+    //     ...cityDetail.value,
+    //     lat,
+    //     lon,
+    //     countryCode: country,
+    //     cityName: name,
+    //     stateCode: state || "",
+    //   };
 
-      // 取得城市天氣資料
-      getCityWeather();
+    //   // 取得城市天氣資料
+    //   getCityWeather();
 
-      // 取得當日每小時天氣資料
-      getHourlyWeather();
+    //   // 取得當日每小時天氣資料
+    //   getHourlyWeather();
 
-      // 取得未來天氣資料
-      getFutureWeather();
-    }
+    //   // 取得未來天氣資料
+    //   getFutureWeather();
+    // }
   } catch (err) {
     console.error(err);
   }
