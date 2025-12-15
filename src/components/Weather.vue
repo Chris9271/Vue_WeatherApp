@@ -8,8 +8,11 @@ import { useAppStore } from "@/stores/appStore";
 
 const appStore = useAppStore();
 
-// 預設城市(之後改抓使用者所在地?)
-const defaultCity = ref("Taipei");
+// 預設城市(抓使用者所在地)
+const defaultCity = ref({
+  lat: "",
+  lon: "",
+});
 
 // 使用者輸入城市
 const inputFieldCity = ref({
@@ -28,6 +31,7 @@ const cityDetail = ref({
   date: null,
   temperature: null,
   unit: "°C",
+  timezone: "",
 });
 
 // 有多個相同城市名稱時，存放選擇的城市列表(下拉選單顯示)
@@ -35,6 +39,9 @@ const inputDropdownList = ref([]);
 
 // 存放城市未來天氣資料陣列
 const futureCityWeatherList = ref([]);
+
+// 輸入欄位下拉選單狀態
+const menuStatus = ref(false);
 
 // 城市背景圖片網址
 const cityPictureUrl =
@@ -51,44 +58,35 @@ let tempChartData = {};
 
 // 多城市下拉選單中選擇其中一個，並設定state/country代碼(透過下拉選單索引值)
 const handleSelectedOption = (index) => {
+  menuStatus.value = false;
+
   inputFieldCity.value = {
     cityName: cityArr[index].name,
     stateCode: cityArr[index]?.state || "",
     countryCode: cityArr[index]?.country || "",
   };
 
-  // console.log(inputFieldCity.value);
-
   getCityWithStateCountry();
 };
 
 // 取得城市經緯度(非多個相同城市)
 const getCityLatLon = async () => {
-  try {
-    // const result =
-    //   await axios.get(`https://api.openweathermap.org/geo/1.0/direct?q=${
-    //     inputFieldCity.value.cityName || defaultCity.value
-    //   }&limit=10&appid=${import.meta.env.VITE_WEATHER_API_KEY}
-    // `);
-    // const result = await axios.get("/api/weather", {
-    //   params: {
-    //     q: inputFieldCity.value.cityName || defaultCity.value,
-    //   },
-    // });
+  menuStatus.value = true;
 
+  try {
     const result = await axios.get("/api/weather", {
       params: {
         action: "cityGeo",
-        q: inputFieldCity.value.cityName || defaultCity.value,
+        q: inputFieldCity.value.cityName,
         limit: "10",
       },
     });
 
+    const { data } = result.data;
+
     // 過濾出符合使用者輸入或預設城市名稱的資料
-    cityArr = result.data.filter(
-      (city) =>
-        city.name.includes(inputFieldCity.value.cityName) ||
-        city.name === defaultCity.value
+    cityArr = data.filter((city) =>
+      city.name.includes(inputFieldCity.value.cityName)
     );
 
     // // 有些城市名稱會有重複，API會回傳多筆資料，要顯示下拉選單讓使用者選擇
@@ -98,7 +96,7 @@ const getCityLatLon = async () => {
       );
     } else {
       // 取得並設定程式經緯度、國碼、城市名稱
-      const { lat, lon, country, state, name } = result.data[0];
+      const { lat, lon, country, state, name } = data[0];
       cityDetail.value = {
         ...cityDetail.value,
         lat,
@@ -125,13 +123,8 @@ const getCityLatLon = async () => {
 // 取得多城市state/country代碼的經緯度
 const getCityWithStateCountry = async () => {
   let cityStateCountryString = `${inputFieldCity?.value?.cityName},${inputFieldCity?.value?.stateCode},${inputFieldCity?.value?.countryCode}`;
-  try {
-    // const result =
-    //   await axios.get(`https://api.openweathermap.org/geo/1.0/direct?q=${cityStateCountryString}&limit=5&appid=${
-    //     import.meta.env.VITE_WEATHER_API_KEY
-    //   }
-    // `);
 
+  try {
     const result = await axios.get("/api/weather", {
       params: {
         action: "multiCityGeo",
@@ -140,8 +133,10 @@ const getCityWithStateCountry = async () => {
       },
     });
 
+    const { data } = result.data;
+
     // 取得並設定程式經緯度、國碼、城市名稱
-    const { lat, lon, country, state, name } = result?.data[0];
+    const { lat, lon, country, state, name } = data[0];
     cityDetail.value = {
       ...cityDetail.value,
       lat,
@@ -203,36 +198,40 @@ function caculateYAxis(rawMin, rawMax) {
 const getCityWeather = async () => {
   try {
     appStore.openLoader();
-    // const result =
-    //   await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${
-    //     cityDetail.value.lat
-    //   }&lon=${cityDetail.value.lon}&appid=${
-    //     import.meta.env.VITE_WEATHER_API_KEY
-    //   }
-    // `);
+
     const result = await axios.get("/api/weather", {
       params: {
         action: "cityWeather",
-        lat: cityDetail.value.lat,
-        lon: cityDetail.value.lon,
+        lat: cityDetail.value.lat || defaultCity.value.lat,
+        lon: cityDetail.value.lon || defaultCity.value.lon,
       },
     });
 
     appStore.closeLoader();
 
-    currentTimeDt = result.data.dt;
+    const { data } = result.data;
+    console.log(data);
+
+    currentTimeDt = data.dt;
 
     // UNIX時間戳是從1970/1/1起的秒數，需要乘以1000轉成毫秒
     // 透過toLocaleDateString取得當地日期格式
     cityDetail.value = {
       ...cityDetail.value,
-      date: new Date(result.data.dt * 1000).toLocaleDateString("en-US", {
+
+      lat: data.coord.lat,
+      lon: data.coord.lom,
+      countryCode: data.sys.country,
+      cityName: data.name,
+      stateCode: data.state || "",
+      date: new Date(data.dt * 1000).toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       }),
-      weatherIcon: result.data.weather[0].icon,
-      temperature: result.data.main.temp,
+      weatherIcon: data.weather[0].icon,
+      temperature: data.main.temp,
+      timezone: data.timezone,
     };
   } catch (err) {
     console.error(err);
@@ -249,25 +248,19 @@ const getCityWeather = async () => {
 
 // 取得當日每小時天氣資料
 const getHourlyWeather = async () => {
-  // console.log(cityDetail.value);
   try {
-    // const result =
-    //   await axios.get(`https://pro.openweathermap.org/data/2.5/forecast/hourly?lat=${
-    //     cityDetail.value.lat
-    //   }&lon=${cityDetail.value.lon}&appid=${
-    //     import.meta.env.VITE_WEATHER_API_KEY
-    //   }
-    // `);
     const result = await axios.get("/api/weather", {
       params: {
         action: "hourlyWeather",
-        lat: cityDetail.value.lat,
-        lon: cityDetail.value.lon,
+        lat: cityDetail.value.lat || defaultCity.value.lat,
+        lon: cityDetail.value.lon || defaultCity.value.lon,
       },
     });
 
+    const { data } = result.data;
+
     // 過濾出當前時間之後的每小時天氣資料，並只取前面十筆
-    const hourlyWeatherAfterNow = result.data.list
+    const hourlyWeatherAfterNow = data.list
       .filter((hourData) => hourData.dt >= currentTimeDt)
       .slice(0, 10);
 
@@ -293,7 +286,6 @@ const getHourlyWeather = async () => {
     );
 
     const chartTempData = caculateYAxis(chartMin, chartMax);
-    // console.log(chartTempData);
 
     tempChartData = {
       color: ["#ffffff"],
@@ -354,8 +346,6 @@ const getHourlyWeather = async () => {
     myChart = echarts.init(document.getElementById("lineChart"), null);
 
     myChart.setOption(tempChartData);
-
-    // console.log(tempChartData);
   } catch (err) {
     console.error(err);
   }
@@ -364,24 +354,18 @@ const getHourlyWeather = async () => {
 // 取得未來天氣(氣溫)資料
 const getFutureWeather = async () => {
   try {
-    // const result =
-    //   await axios.get(`https://api.openweathermap.org/data/2.5/forecast/daily?lat=${
-    //     cityDetail.value.lat
-    //   }&lon=${cityDetail.value.lon}&cnt=8&appid=${
-    //     import.meta.env.VITE_WEATHER_API_KEY
-    //   }
-    // `);
-
     const result = await axios.get("/api/weather", {
       params: {
         action: "futureWeather",
-        lat: cityDetail.value.lat,
-        lon: cityDetail.value.lon,
-        cnt: "8",
+        lat: cityDetail.value.lat || defaultCity.value.lat,
+        lon: cityDetail.value.lon || defaultCity.value.lon,
+        cnt: "9",
       },
     });
 
-    futureCityWeatherList.value = result.data.list.slice(1, 8);
+    const { data } = result.data;
+
+    futureCityWeatherList.value = data.list;
   } catch (err) {
     console.error(err);
   }
@@ -422,6 +406,43 @@ const temperature = (temp) => {
   }
 };
 
+// 抓geolocation相關事件處理(含成功與失敗)
+const getGeoLocation = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(success, error, {
+      enableHighAccuracy: true,
+      maximumAge: 0, // 不使用 cache
+      timeout: 5000,
+    });
+  } else {
+    console.log("Geolocation is not supported by this browser.");
+  }
+};
+
+const success = (position) => {
+  const latitude = position.coords.latitude;
+  const longitude = position.coords.longitude;
+
+  defaultCity.value = {
+    lat: latitude,
+    lon: longitude,
+  };
+
+  // 取得城市天氣資料
+  getCityWeather();
+
+  // 取得當日每小時天氣資料
+  getHourlyWeather();
+
+  // 取得未來天氣資料
+  getFutureWeather();
+};
+
+const error = (err) => {
+  console.warn(`ERROR(${err.code}): ${err.message}`);
+};
+
+// 儲存圖表的變數
 var myChart;
 
 // 視窗大小改變時，調整圖表大小
@@ -432,7 +453,7 @@ window.addEventListener("resize", () => {
 });
 
 onMounted(() => {
-  getCityLatLon();
+  getGeoLocation();
 });
 </script>
 
@@ -455,6 +476,7 @@ onMounted(() => {
               @keyup.enter="getCityLatLon"
               :items="inputDropdownList"
               :hide-no-data="inputDropdownList.length == 0"
+              :menu="menuStatus || inputDropdownList.length > 0"
               autoComplete="off"
             >
               <template #item="{ props, index, item }">
@@ -537,8 +559,10 @@ onMounted(() => {
                 <span>{{
                   futureCityWeatherList[0]?.sunrise
                     ? new Date(
-                        futureCityWeatherList[0]?.sunrise * 1000
+                        futureCityWeatherList[0]?.sunrise * 1000 +
+                          cityDetail?.timezone * 1000
                       ).toLocaleTimeString("en-us", {
+                        timeZone: "UTC",
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: false,
@@ -552,8 +576,10 @@ onMounted(() => {
                 <span>{{
                   futureCityWeatherList[0]?.sunset
                     ? new Date(
-                        futureCityWeatherList[0]?.sunset * 1000
+                        futureCityWeatherList[0]?.sunset * 1000 +
+                          cityDetail?.timezone * 1000
                       ).toLocaleTimeString("en-us", {
+                        timeZone: "UTC",
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: false,
@@ -584,10 +610,13 @@ onMounted(() => {
             <!-- 星期,日期 天氣icon、高低溫 -->
             <v-list class="pa-0">
               <h3>8-Day Forecast</h3>
-              <template v-for="(weather, index) in futureCityWeatherList">
+              <template
+                v-for="(weather, index) in futureCityWeatherList.slice(1, 8)"
+              >
                 <DailyWeather
                   :weatherData="weather"
                   :convertTemp="convertTemp"
+                  :timeZone="cityDetail.timezone"
                 />
               </template>
             </v-list>

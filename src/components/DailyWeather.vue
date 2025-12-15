@@ -5,6 +5,11 @@ defineProps({
     required: true,
   },
 
+  timeZone: {
+    type: Number,
+    required: true,
+  },
+
   convertTemp: {
     type: Function,
     required: true,
@@ -15,12 +20,17 @@ defineProps({
 <template>
   <div class="d-flex flex-row align-center ga-3 dailyDetails">
     <span>
+      <!-- 先取得UTC時間再加時差 -->
       {{
-        new Date(weatherData.dt * 1000).toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        })
+        new Date(weatherData.dt * 1000 + timeZone * 1000).toLocaleDateString(
+          "en-US",
+          {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+          }
+        )
       }}
     </span>
     <span>{{ convertTemp(weatherData.temp.max, weatherData.temp.min) }}</span>
