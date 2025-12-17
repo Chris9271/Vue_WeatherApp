@@ -5,8 +5,10 @@ import axios from "axios";
 import * as echarts from "echarts/core";
 import DailyWeather from "./DailyWeather.vue";
 import { useAppStore } from "@/stores/appStore";
+import { useDisplay } from "vuetify";
 
 const appStore = useAppStore();
+const { width, xs, sm, md, mdAndUp, lg, xl, xxl } = useDisplay();
 
 // 預設城市(抓使用者所在地)
 const defaultCity = ref({
@@ -210,7 +212,6 @@ const getCityWeather = async () => {
     appStore.closeLoader();
 
     const { data } = result.data;
-    console.log(data);
 
     currentTimeDt = data.dt;
 
@@ -383,16 +384,16 @@ const switchTempUnit = () => {
 };
 
 // 高低溫顯示轉換(攝氏華氏)
-const convertTemp = (maxTemp, minTemp) => {
+const convertTemp = (minTemp, maxTemp) => {
   if (cityDetail.value.unit == "°C") {
     return (
-      (maxTemp - 273.15).toFixed(0) +
-      " / " +
       (minTemp - 273.15).toFixed(0) +
+      " / " +
+      (maxTemp - 273.15).toFixed(0) +
       " °C"
     );
   } else {
-    return maxTemp + " / " + minTemp + " °F";
+    return minTemp + " / " + maxTemp + " °F";
   }
 };
 
@@ -464,9 +465,15 @@ onMounted(() => {
       <div class="position-absolute w-100 h-100 cityBackground">
         <img :src="cityPictureUrl" class="position-absolute w-100 h-100" />
       </div>
-      <v-container class="d-flex flex-row ga-3">
-        <!-- 輸入、切換單位 -->
-        <v-sheet class="d-flex flex-column align-center ga-3 w-66 leftSheet">
+      <v-container
+        class="d-flex ga-3"
+        :class="mdAndUp ? 'flex-row' : 'flex-column'"
+      >
+        <!-- 輸入 -->
+        <v-sheet
+          class="d-flex flex-column align-center ga-3 leftSheet"
+          :class="mdAndUp ? 'w-66' : 'w-100'"
+        >
           <div class="d-flex flex-row align-center ga-3 w-75">
             <!-- 使用者輸入＆選擇區塊 -->
             <v-combobox
@@ -497,6 +504,18 @@ onMounted(() => {
             </v-combobox>
 
             <v-btn variant="tonal" @click="getCityLatLon">Search</v-btn>
+
+            <!-- 切換攝氏跟華氏 -->
+            <v-switch
+              label="°C / °F"
+              :modelValue="cityDetail.unit"
+              :hide-details="true"
+              class="px-3 switchBtn bg-transparent"
+              :color="'#FFFFFF'"
+              @click="switchTempUnit"
+              inset
+              v-if="!mdAndUp"
+            ></v-switch>
           </div>
 
           <!-- 顯示城市、天氣、溫度 -->
@@ -516,99 +535,130 @@ onMounted(() => {
                 </h3>
               </div>
             </div>
-            <div id="lineChart"></div>
+            <div id="lineChart" v-show="mdAndUp"></div>
           </div>
         </v-sheet>
 
-        <v-sheet class="d-flex flex-column w-33 rightSheet">
+        <!-- 切換單位、天氣細節 -->
+        <v-sheet
+          class="d-flex flex-column rightSheet"
+          :class="mdAndUp ? 'w-33' : 'w-100 text-white bg-transparent'"
+        >
           <!-- 切換攝氏跟華氏 -->
           <v-switch
-            :label="cityDetail.unit == '°C' ? 'Switch to °F' : 'Switch to °C'"
+            label="°C / °F"
             :modelValue="cityDetail.unit"
             :hide-details="true"
             class="px-3 switchBtn"
             :color="'#FFFFFF'"
             @click="switchTempUnit"
             inset
+            v-if="mdAndUp"
           ></v-switch>
 
           <!-- 天氣細節 -->
           <div
             class="d-flex flex-column justify-space-between ga-3 pa-3 h-100 weatherDetails"
+            :class="mdAndUp ? 'w-100' : 'w-75 bg-transparent mx-auto my-0'"
           >
             <!-- 當天日出、日落、體感溫、濕度 -->
-            <div class="d-flex flex-column ga-3 todayDetail">
+            <div class="d-flex flex-column todayDetail">
               <h3>Weather Details</h3>
-              <p class="d-flex flex-row align-center">
-                <span>High</span>
-                <span>：</span>
-                <span>{{
-                  temperature(futureCityWeatherList[0]?.temp?.max)
-                }}</span>
-              </p>
-              <p class="d-flex flex-row align-center">
-                <span>Low</span>
-                <span>：</span>
-                <span>{{
-                  temperature(futureCityWeatherList[0]?.temp?.min)
-                }}</span>
-              </p>
-              <p class="d-flex flex-row align-center">
-                <span>Sunrise</span>
-                <span>：</span>
-                <span>{{
-                  futureCityWeatherList[0]?.sunrise
-                    ? new Date(
-                        futureCityWeatherList[0]?.sunrise * 1000 +
-                          cityDetail?.timezone * 1000
-                      ).toLocaleTimeString("en-us", {
-                        timeZone: "UTC",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })
-                    : ""
-                }}</span>
-              </p>
-              <p class="d-flex flex-row align-center">
-                <span>Sunset</span>
-                <span>：</span>
-                <span>{{
-                  futureCityWeatherList[0]?.sunset
-                    ? new Date(
-                        futureCityWeatherList[0]?.sunset * 1000 +
-                          cityDetail?.timezone * 1000
-                      ).toLocaleTimeString("en-us", {
-                        timeZone: "UTC",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })
-                    : ""
-                }}</span>
-              </p>
-              <p class="d-flex flex-row align-center">
-                <span>Humidity</span>
-                <span>：</span>
-                <span>{{
-                  futureCityWeatherList[0]?.humidity
-                    ? futureCityWeatherList[0]?.humidity + " %"
-                    : ""
-                }}</span>
-              </p>
-              <p class="d-flex flex-row align-center">
-                <span>Feels like</span>
-                <span>：</span>
-                <span>{{
-                  temperature(futureCityWeatherList[0]?.feels_like?.day)
-                }}</span>
-              </p>
+
+              <v-row no-gutters :class="mdAndUp ? '' : 'text-center'">
+                <v-col :cols="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                  <p class="d-flex flex-row align-center">
+                    <span>High</span>
+                    <span>：</span>
+                    <span>{{
+                      temperature(futureCityWeatherList[0]?.temp?.max)
+                    }}</span>
+                  </p>
+                </v-col>
+                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                  <p class="d-flex flex-row align-center">
+                    <span>Low</span>
+                    <span>：</span>
+                    <span>{{
+                      temperature(futureCityWeatherList[0]?.temp?.min)
+                    }}</span>
+                  </p>
+                </v-col>
+              </v-row>
+
+              <v-row no-gutters :class="mdAndUp ? '' : 'text-center'">
+                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                  <p class="d-flex flex-row align-center">
+                    <span>Sunrise</span>
+                    <span>：</span>
+                    <span>{{
+                      futureCityWeatherList[0]?.sunrise
+                        ? new Date(
+                            futureCityWeatherList[0]?.sunrise * 1000 +
+                              cityDetail?.timezone * 1000
+                          ).toLocaleTimeString("en-us", {
+                            timeZone: "UTC",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
+                        : ""
+                    }}</span>
+                  </p>
+                </v-col>
+                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                  <p class="d-flex flex-row align-center">
+                    <span>Sunset</span>
+                    <span>：</span>
+                    <span>{{
+                      futureCityWeatherList[0]?.sunset
+                        ? new Date(
+                            futureCityWeatherList[0]?.sunset * 1000 +
+                              cityDetail?.timezone * 1000
+                          ).toLocaleTimeString("en-us", {
+                            timeZone: "UTC",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
+                        : ""
+                    }}</span>
+                  </p>
+                </v-col>
+              </v-row>
+
+              <v-row no-gutters :class="mdAndUp ? '' : 'text-center'">
+                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                  <p class="d-flex flex-row align-center">
+                    <span>Humidity</span>
+                    <span>：</span>
+                    <span>{{
+                      futureCityWeatherList[0]?.humidity
+                        ? futureCityWeatherList[0]?.humidity + " %"
+                        : ""
+                    }}</span>
+                  </p>
+                </v-col>
+
+                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                  <p class="d-flex flex-row align-center">
+                    <span>Feels like</span>
+                    <span>：</span>
+                    <span>{{
+                      temperature(futureCityWeatherList[0]?.feels_like?.day)
+                    }}</span>
+                  </p>
+                </v-col>
+              </v-row>
             </div>
 
             <!-- 顯示未來幾日天氣預報 -->
 
             <!-- 星期,日期 天氣icon、高低溫 -->
-            <v-list class="pa-0">
+            <v-list
+              class="pa-0"
+              :class="mdAndUp ? '' : 'text-white bg-transparent'"
+            >
               <h3>8-Day Forecast</h3>
               <template
                 v-for="(weather, index) in futureCityWeatherList.slice(1, 8)"
@@ -617,6 +667,7 @@ onMounted(() => {
                   :weatherData="weather"
                   :convertTemp="convertTemp"
                   :timeZone="cityDetail.timezone"
+                  :class="mdAndUp ? '' : 'text-center'"
                 />
               </template>
             </v-list>
@@ -678,7 +729,7 @@ h3.tempDegree {
 
   .todayDetail {
     p {
-      height: 35px;
+      height: 46px;
 
       span:not(:nth-child(2)) {
         flex: 1;
@@ -689,5 +740,9 @@ h3.tempDegree {
   .v-list {
     background-color: #cfcfcf;
   }
+}
+
+.bg-transparent {
+  background: transparent !important;
 }
 </style>
