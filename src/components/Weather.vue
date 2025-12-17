@@ -8,7 +8,7 @@ import { useAppStore } from "@/stores/appStore";
 import { useDisplay } from "vuetify";
 
 const appStore = useAppStore();
-const { width, xs, sm, md, mdAndUp, lg, xl, xxl } = useDisplay();
+const { width, xs, sm, md, mdAndUp, lg, lgAndUp } = useDisplay();
 
 // 預設城市(抓使用者所在地)
 const defaultCity = ref({
@@ -466,15 +466,18 @@ onMounted(() => {
         <img :src="cityPictureUrl" class="position-absolute w-100 h-100" />
       </div>
       <v-container
-        class="d-flex ga-3"
-        :class="mdAndUp ? 'flex-row' : 'flex-column'"
+        class="d-flex"
+        :class="lgAndUp ? 'flex-row ga-3' : 'flex-column ga-4'"
       >
         <!-- 輸入 -->
         <v-sheet
           class="d-flex flex-column align-center ga-3 leftSheet"
-          :class="mdAndUp ? 'w-66' : 'w-100'"
+          :class="lgAndUp ? 'w-66' : 'w-100'"
         >
-          <div class="d-flex flex-row align-center ga-3 w-75">
+          <div
+            class="d-flex flex-row align-center ga-3"
+            :class="xs ? 'w-100' : 'w-75'"
+          >
             <!-- 使用者輸入＆選擇區塊 -->
             <v-combobox
               v-model="inputFieldCity.cityName"
@@ -503,7 +506,9 @@ onMounted(() => {
               </template>
             </v-combobox>
 
-            <v-btn variant="tonal" @click="getCityLatLon">Search</v-btn>
+            <v-btn variant="tonal" @click="getCityLatLon" v-show="!xs"
+              >Search</v-btn
+            >
 
             <!-- 切換攝氏跟華氏 -->
             <v-switch
@@ -514,7 +519,7 @@ onMounted(() => {
               :color="'#FFFFFF'"
               @click="switchTempUnit"
               inset
-              v-if="!mdAndUp"
+              v-if="!lgAndUp"
             ></v-switch>
           </div>
 
@@ -535,14 +540,14 @@ onMounted(() => {
                 </h3>
               </div>
             </div>
-            <div id="lineChart" v-show="mdAndUp"></div>
+            <div id="lineChart" v-show="lgAndUp"></div>
           </div>
         </v-sheet>
 
         <!-- 切換單位、天氣細節 -->
         <v-sheet
           class="d-flex flex-column rightSheet"
-          :class="mdAndUp ? 'w-33' : 'w-100 text-white bg-transparent'"
+          :class="lgAndUp ? 'w-33' : 'w-100 text-white bg-transparent'"
         >
           <!-- 切換攝氏跟華氏 -->
           <v-switch
@@ -553,20 +558,26 @@ onMounted(() => {
             :color="'#FFFFFF'"
             @click="switchTempUnit"
             inset
-            v-if="mdAndUp"
+            v-if="lgAndUp"
           ></v-switch>
 
           <!-- 天氣細節 -->
           <div
-            class="d-flex flex-column justify-space-between ga-3 pa-3 h-100 weatherDetails"
-            :class="mdAndUp ? 'w-100' : 'w-75 bg-transparent mx-auto my-0'"
+            class="d-flex flex-column justify-space-between pa-3 h-100 weatherDetails"
+            :class="
+              xs
+                ? 'w-100 bg-transparent mx-auto my-0 ga-4'
+                : !lgAndUp
+                ? 'w-75 bg-transparent mx-auto my-0 ga-4'
+                : 'w-100 ga-3'
+            "
           >
             <!-- 當天日出、日落、體感溫、濕度 -->
             <div class="d-flex flex-column todayDetail">
               <h3>Weather Details</h3>
 
-              <v-row no-gutters :class="mdAndUp ? '' : 'text-center'">
-                <v-col :cols="mdAndUp ? 'v-col-12' : 'v-col-6'">
+              <v-row no-gutters :class="lgAndUp ? '' : 'text-center'">
+                <v-col :cols="lgAndUp ? 'v-col-12' : 'v-col-6'">
                   <p class="d-flex flex-row align-center">
                     <span>High</span>
                     <span>：</span>
@@ -575,7 +586,7 @@ onMounted(() => {
                     }}</span>
                   </p>
                 </v-col>
-                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                <v-col :class="lgAndUp ? 'v-col-12' : 'v-col-6'">
                   <p class="d-flex flex-row align-center">
                     <span>Low</span>
                     <span>：</span>
@@ -586,8 +597,8 @@ onMounted(() => {
                 </v-col>
               </v-row>
 
-              <v-row no-gutters :class="mdAndUp ? '' : 'text-center'">
-                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+              <v-row no-gutters :class="lgAndUp ? '' : 'text-center'">
+                <v-col :class="lgAndUp ? 'v-col-12' : 'v-col-6'">
                   <p class="d-flex flex-row align-center">
                     <span>Sunrise</span>
                     <span>：</span>
@@ -606,7 +617,7 @@ onMounted(() => {
                     }}</span>
                   </p>
                 </v-col>
-                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                <v-col :class="lgAndUp ? 'v-col-12' : 'v-col-6'">
                   <p class="d-flex flex-row align-center">
                     <span>Sunset</span>
                     <span>：</span>
@@ -627,8 +638,8 @@ onMounted(() => {
                 </v-col>
               </v-row>
 
-              <v-row no-gutters :class="mdAndUp ? '' : 'text-center'">
-                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+              <v-row no-gutters :class="lgAndUp ? '' : 'text-center'">
+                <v-col :class="lgAndUp ? 'v-col-12' : 'v-col-6'">
                   <p class="d-flex flex-row align-center">
                     <span>Humidity</span>
                     <span>：</span>
@@ -640,7 +651,7 @@ onMounted(() => {
                   </p>
                 </v-col>
 
-                <v-col :class="mdAndUp ? 'v-col-12' : 'v-col-6'">
+                <v-col :class="lgAndUp ? 'v-col-12' : 'v-col-6'">
                   <p class="d-flex flex-row align-center">
                     <span>Feels like</span>
                     <span>：</span>
@@ -657,7 +668,7 @@ onMounted(() => {
             <!-- 星期,日期 天氣icon、高低溫 -->
             <v-list
               class="pa-0"
-              :class="mdAndUp ? '' : 'text-white bg-transparent'"
+              :class="lgAndUp ? '' : 'text-white bg-transparent'"
             >
               <h3>8-Day Forecast</h3>
               <template
@@ -667,7 +678,7 @@ onMounted(() => {
                   :weatherData="weather"
                   :convertTemp="convertTemp"
                   :timeZone="cityDetail.timezone"
-                  :class="mdAndUp ? '' : 'text-center'"
+                  :class="lgAndUp ? '' : 'text-center'"
                 />
               </template>
             </v-list>
