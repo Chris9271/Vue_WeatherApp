@@ -1,17 +1,19 @@
 <script setup>
+import { convertTemp } from "@/utils/convertTemp";
+
 defineProps({
   weatherData: {
     type: Object,
     required: true,
   },
 
-  timeZone: {
+  timezone: {
     type: Number,
     required: true,
   },
 
-  convertTemp: {
-    type: Function,
+  tempUnit: {
+    type: String,
     required: true,
   },
 });
@@ -22,13 +24,13 @@ defineProps({
     <span class="flex-sm-1-1 flex-1-1-0">
       <!-- 先取得UTC時間再加時差 -->
       {{
-        new Date(weatherData.dt * 1000 + timeZone * 1000).toLocaleDateString(
+        new Date(weatherData.dt * 1000 + timezone * 1000).toLocaleDateString(
           "en-US",
           {
             weekday: "short",
             month: "short",
             day: "numeric",
-            timeZone: "UTC",
+            timezone: "UTC",
           }
         )
       }}
@@ -40,7 +42,7 @@ defineProps({
       />
     </span>
     <span class="flex-sm-1-1 flex-1-1-0">{{
-      convertTemp(weatherData.temp.min, weatherData.temp.max)
+      convertTemp(weatherData.temp.min, weatherData.temp.max, tempUnit)
     }}</span>
   </div>
 </template>

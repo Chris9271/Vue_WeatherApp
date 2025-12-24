@@ -1,5 +1,4 @@
 <template>
-  <!-- <HelloWorld /> -->
   <Weather />
 </template>
 
