@@ -111,7 +111,8 @@ const { xs, lgAndUp } = useDisplay();
             <span>：</span>
             <span>{{
               displayTemp(
-                weatherStore.futureCityWeatherList[0]?.feels_like?.day
+                weatherStore.futureCityWeatherList[0]?.feels_like?.day,
+                weatherStore.cityDetail.unit
               )
             }}</span>
           </p>
