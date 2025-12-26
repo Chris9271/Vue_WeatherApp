@@ -67,7 +67,7 @@ export const useWeatherStore = defineStore("useWeatherStore", () => {
         ...cityDetail.value,
 
         lat: data.coord.lat,
-        lon: data.coord.lom,
+        lon: data.coord.lon,
         countryCode: data.sys.country,
         cityName: data.name,
         stateCode: data.state || "",
